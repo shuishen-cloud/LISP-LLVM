@@ -1,0 +1,17 @@
+{
+    "editor.fontSize": 15,
+    "clangd.arguments": ["--log=verbose"],
+    "clangd.path": "/usr/bin/clangd",
+    // "clang-format.language.cpp.enable": true,
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.fontFamily": "Fira Code Regular, '霞鹜文楷', Consolas, monospace",
+    "editor.formatOnSave": true,
+    // "clang-format.executable": "clang-format",
+    "indentRainbow.colorOnWhiteSpaceOnly": true, // false is the default
+    "indentRainbow.ignoreErrorLanguages" : [
+        "cpp",
+        "json"
+    ],
+    "indentRainbow.indicatorStyle": "classic",
+    "indentRainbow.lightIndicatorStyleLineWidth": 2
+}
