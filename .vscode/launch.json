@@ -1,0 +1,11 @@
+{        
+    "configurations":[{
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch llvm",
+            "program": "${workspaceFolder}/eva-llvm",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
