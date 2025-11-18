@@ -1,4 +1,6 @@
-clang++ -o eva-llvm `llvm-config --cxxflags --ldflags --system-libs --libs core` -fexceptions EvalLLVM.cpp
+ulimit -c unlimited
+
+clang++ -o eva-llvm `llvm-config --cxxflags --ldflags --system-libs --libs core` -fexceptions -g EvalLLVM.cpp
 
 ./eva-llvm
 
