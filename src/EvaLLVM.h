@@ -173,11 +173,15 @@ class EvalLLVM {
                     编译 block 内所有式子，取最后值，很符合 LISP 的设计。
                     */
 
+                    // ! 创建新环境
+                    auto blockEnv =
+                        std::make_shared<Environment>(std::map<std::string, llvm::Value *>(), env);
+
                     llvm::Value *blockRes;
 
                     // 迭代生成，这里还是递归
                     for (int i = 1; i < exp.list.size(); i++) {
-                        blockRes = gen(exp.list[i], env);
+                        blockRes = gen(exp.list[i], blockEnv);
                     }
 
                     return blockRes;

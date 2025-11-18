@@ -4,14 +4,14 @@
 int main(int argc, char const *argv[]) {
     std::string program = R"(
     
-    (var x 1)
+    (var (x string) "linux")
     
     (begin
         (var (x string) "Hello")
         (printf "x: %s\n" x)
     )
     
-    (printf "X: %d\n" x)
+    (printf "X: %s\n" x)
     
     (set x 100)
     
