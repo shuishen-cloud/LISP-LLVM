@@ -32,6 +32,13 @@
 using syntax::EvaParser;
 using Env = std::shared_ptr<Environment>;
 
+// 二元操作符
+#define GEN_BINARY_OP(Op, varName)                                                                 \
+    do {                                                                                           \
+        auto op1 = gen(exp.list[1], env);                                                          \
+        auto op2 = gen(exp.list[2], env);                                                          \
+        return builder->Op(op1, op2, varName);                                                     \
+    } while (false)
 class EvalLLVM {
   public:
     EvalLLVM() : parser(std::make_unique<EvaParser>()) {
@@ -126,7 +133,6 @@ class EvalLLVM {
                 if (auto localVar = llvm::dyn_cast<llvm::AllocaInst>(value)) {
                     return builder->CreateLoad(localVar->getAllocatedType(), localVar,
                                                varName.c_str());
-                    // ! 解析逻辑会不会出错呀
                 } else if (auto globalVar = llvm::dyn_cast<llvm::GlobalVariable>(value)) {
                     // 区分变量类型：如果是整数类型，加载其值；如果是指针类型，直接传递指针
                     auto varType = globalVar->getInitializer()->getType();
@@ -144,6 +150,21 @@ class EvalLLVM {
 
             if (tag.type == ExpType::SYMBOL) {
                 auto op = tag.string;
+
+                // * 感觉没必要写写那么多运算，日后再补
+                if (op == "+") {
+                    GEN_BINARY_OP(CreateAdd, "tmpadd");
+                } else if (op == "-") {
+                    GEN_BINARY_OP(CreateSub, "tmpsub");
+                } else if (op == "*") {
+                    GEN_BINARY_OP(CreateMul, "tmpmul");
+                } else if (op == "/") {
+                    GEN_BINARY_OP(CreateSDiv, "tmpdiv");
+                } else if (op == "eq") {
+                    GEN_BINARY_OP(CreateICmpEQ, "tmpcmp");
+                } else if (op == ">") {
+                    GEN_BINARY_OP(CreateICmpUGT, "tmpcmp");
+                }
 
                 if (op == "var") {
                     /**
