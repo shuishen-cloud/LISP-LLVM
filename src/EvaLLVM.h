@@ -72,8 +72,6 @@ class EvalLLVM {
         fn = createFunction("main", llvm::FunctionType::get(builder->getInt32Ty(), false),
                             GlobalEnv);
 
-        // createGlobalVar("VERSION", builder->getInt32(123));
-
         auto result = gen(ast, GlobalEnv);
         auto i32Result = builder->CreateIntCast(result, builder->getInt32Ty(), true);
 
@@ -118,22 +116,17 @@ class EvalLLVM {
             if (exp.string == "true" || exp.string == "false") {
                 return builder->getInt32(exp.string == "true" ? true : false);
             } else {
-                // ! 这里是解决段错误的关键
-                // auto global = module->getNamedGlobal(exp.string);
-                // if (!global || !global->hasInitializer()) {
-                //     // 处理错误：比如返回默认值或抛出异常
-                //     return builder->getInt32(0);
-                // }
-                // // ! 这里是解决异常的关键，需要通过读取 IR 来判断
-                // return module->getNamedGlobal(exp.string);
-
                 auto varName = exp.string;
                 auto value = env->lookup(varName);
 
-                // 这个是干嘛的？
                 if (auto globalVar = llvm::dyn_cast<llvm::GlobalVariable>(value)) {
-                    return builder->CreateLoad(globalVar->getInitializer()->getType(), globalVar,
-                                               varName.c_str());
+                    // 区分变量类型：如果是整数类型，加载其值；如果是指针类型，直接传递指针
+                    auto varType = globalVar->getInitializer()->getType();
+                    if (varType->isIntegerTy()) {
+                        return builder->CreateLoad(varType, globalVar, varName.c_str());
+                    } else {
+                        return globalVar;
+                    }
                 }
             }
         }
@@ -149,7 +142,10 @@ class EvalLLVM {
 
                     auto init = gen(exp.list[2], env);
 
-                    return createGlobalVar(varName, (llvm::Constant *)init);
+                    // ! 将变量名绑定到环境中
+                    env->define(varName, init);
+
+                    return createGlobalVar(varName, (llvm::Constant *)init)->getInitializer();
                 } else if (op == "begin") {
                     /**
                     编译 block 内所有式子，取最后值，很符合 LISP 的设计。

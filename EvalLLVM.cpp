@@ -3,8 +3,11 @@
 
 int main(int argc, char const *argv[]) {
     std::string program = R"(
-        // (var VERSION 42)
+        (var STRING "Hello")
+        (var Linux "Linux")
+        (printf "String: %s\n" STRING)
         (printf "Version: %d\n" VERSION)
+        (printf "Linux: %s\n" Linux)
     )";
 
     EvalLLVM vm;
