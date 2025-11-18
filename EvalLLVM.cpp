@@ -3,11 +3,24 @@
 
 int main(int argc, char const *argv[]) {
     std::string program = R"(
-        (var STRING "Hello")
-        (var Linux "Linux")
-        (printf "String: %s\n" STRING)
-        (printf "Version: %d\n" VERSION)
-        (printf "Linux: %s\n" Linux)
+    
+    (var x 1)
+    
+    (begin
+        (var (x string) "Hello")
+        (printf "x: %s\n" x)
+    )
+    
+    (printf "X: %d\n" x)
+    
+    (set x 100)
+    
+    (printf "X: %d\n" x)
+    
+    (set x 200)
+
+    (printf "X: %d\n" x)
+    
     )";
 
     EvalLLVM vm;

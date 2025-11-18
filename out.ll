@@ -3,20 +3,28 @@ source_filename = "EvaLLVM"
 
 @VERSION = global i32 42, align 4
 @0 = private unnamed_addr constant [6 x i8] c"Hello\00", align 1
-@STRING = global ptr @0, align 4
-@1 = private unnamed_addr constant [6 x i8] c"Linux\00", align 1
-@Linux = global ptr @1, align 4
-@2 = private unnamed_addr constant [12 x i8] c"String: %s\0A\00", align 1
-@3 = private unnamed_addr constant [13 x i8] c"Version: %d\0A\00", align 1
-@4 = private unnamed_addr constant [11 x i8] c"Linux: %s\0A\00", align 1
+@1 = private unnamed_addr constant [7 x i8] c"x: %s\0A\00", align 1
+@2 = private unnamed_addr constant [7 x i8] c"X: %d\0A\00", align 1
+@3 = private unnamed_addr constant [7 x i8] c"X: %d\0A\00", align 1
+@4 = private unnamed_addr constant [7 x i8] c"X: %d\0A\00", align 1
 
 declare i32 @printf(ptr, ...)
 
 define i32 @main() {
 entry:
-  %0 = call i32 (ptr, ...) @printf(ptr @2, ptr @0)
-  %VERSION = load i32, ptr @VERSION, align 4
-  %1 = call i32 (ptr, ...) @printf(ptr @3, i32 %VERSION)
-  %2 = call i32 (ptr, ...) @printf(ptr @4, ptr @1)
-  ret i32 %2
+  %x = alloca i32, align 4
+  store i32 1, ptr %x, align 4
+  %x1 = alloca ptr, align 8
+  store ptr @0, ptr %x1, align 8
+  %x2 = load ptr, ptr %x1, align 8
+  %0 = call i32 (ptr, ...) @printf(ptr @1, ptr %x2)
+  %x3 = load ptr, ptr %x1, align 8
+  %1 = call i32 (ptr, ...) @printf(ptr @2, ptr %x3)
+  store i32 100, ptr %x1, align 4
+  %x4 = load ptr, ptr %x1, align 8
+  %2 = call i32 (ptr, ...) @printf(ptr @3, ptr %x4)
+  store i32 200, ptr %x1, align 4
+  %x5 = load ptr, ptr %x1, align 8
+  %3 = call i32 (ptr, ...) @printf(ptr @4, ptr %x5)
+  ret i32 %3
 }
