@@ -4,10 +4,13 @@
 #include "llvm/IR/Verifier.h"
 #include <llvm/Config/abi-breaking.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constant.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Value.h>
 
+#include <llvm/Support/Alignment.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
 #include <regex>
@@ -31,8 +34,6 @@ class EvalLLVM {
     }
 
     void exec(const std::string &program) {
-
-        // 这个  parser 是哪里来得？
         auto ast = parser->parse(program);
 
         complie(ast);
@@ -64,6 +65,9 @@ class EvalLLVM {
     void complie(const struct Exp &ast) {
         // 根据 规则 使用 LLVM 的内置函数创建相应的 IR
         fn = createFunction("main", llvm::FunctionType::get(builder->getInt32Ty(), false));
+
+        createGlobalVar("VERSION", builder->getInt32(123));
+
         auto result = gen(ast);
         auto i32Result = builder->CreateIntCast(result, builder->getInt32Ty(), true);
 
@@ -103,14 +107,27 @@ class EvalLLVM {
             return builder->CreateGlobalStringPtr(str);
         }
 
-        case ExpType::SYMBOL:
-            return builder->getInt32(0);
+        case ExpType::SYMBOL: {
+            if (exp.string == "true" || exp.string == "false") {
+                return builder->getInt32(exp.string == "true" ? true : false);
+            } else {
+                return module->getNamedGlobal(exp.string)->getInitializer();
+            }
+        }
 
         case ExpType::LIST:
             auto tag = exp.list[0];
 
             if (tag.type == ExpType::SYMBOL) {
                 auto op = tag.string;
+
+                if (op == "var") {
+                    auto varName = exp.list[1].string;
+
+                    auto init = gen(exp.list[2]);
+
+                    return createGlobalVar(varName, (llvm::Constant *)init);
+                }
 
                 if (op == "printf") {
                     auto printfn = module->getFunction("printf");
@@ -126,9 +143,18 @@ class EvalLLVM {
             }
         }
 
-        // auto str = builder->CreateGlobalString("Hello world! IR\n");
-
         return builder->getInt32(0);
+    }
+
+    llvm::GlobalVariable *createGlobalVar(const std::string &name, llvm::Constant *init) {
+        module->getOrInsertGlobal(name, init->getType());
+
+        auto variable = module->getNamedGlobal(name);
+        variable->setAlignment(llvm::MaybeAlign(4));
+        variable->setConstant(false);
+        variable->setInitializer(init);
+
+        return variable;
     }
 
     void setupExternFunction() {
