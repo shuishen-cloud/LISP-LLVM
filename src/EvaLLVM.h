@@ -141,6 +141,8 @@ class EvalLLVM {
                     } else {
                         return globalVar;
                     }
+                } else {
+                    return value;
                 }
             }
         }
@@ -166,50 +168,6 @@ class EvalLLVM {
                     GEN_BINARY_OP(CreateICmpUGT, "tmpcmp");
                 } else if (op == "<") {
                     GEN_BINARY_OP(CreateICmpULT, "tmpcmp");
-                }
-
-                if (op == "var") {
-                    /**
-                     * (var (x number) 1)
-                     */
-
-                    auto varNameDecl = exp.list[1];
-                    auto varName = extractVarName(varNameDecl);
-
-                    auto init = gen(exp.list[2], env);
-
-                    auto varTy = extractVarType(varNameDecl);
-
-                    auto varBinding = allocVar(varName, varTy, env);
-
-                    return builder->CreateStore(init, varBinding);
-                } else if (op == "set") {
-                    auto value = gen(exp.list[2], env);
-
-                    auto varName = exp.list[1].string;
-
-                    auto varBinding = env->lookup(varName);
-
-                    builder->CreateStore(value, varBinding);
-
-                    return value;
-                } else if (op == "begin") {
-                    /**
-                    编译 block 内所有式子，取最后值，很符合 LISP 的设计。
-                    */
-
-                    // ! 创建新环境
-                    auto blockEnv =
-                        std::make_shared<Environment>(std::map<std::string, llvm::Value *>(), env);
-
-                    llvm::Value *blockRes;
-
-                    // 迭代生成，这里还是递归
-                    for (int i = 1; i < exp.list.size(); i++) {
-                        blockRes = gen(exp.list[i], blockEnv);
-                    }
-
-                    return blockRes;
                 } else if (op == "if") {
                     auto cond = gen(exp.list[1], env);
 
@@ -265,6 +223,52 @@ class EvalLLVM {
                     auto *MyBlock = llvm::BasicBlock::Create(Ctx, "Myblock");
 
                     return builder->getInt32(0);
+                } else if (op == "def") {
+                    return complieFunction(exp, exp.list[1].string, env);
+                }
+
+                if (op == "var") {
+                    /**
+                     * (var (x number) 1)
+                     */
+
+                    auto varNameDecl = exp.list[1];
+                    auto varName = extractVarName(varNameDecl);
+
+                    auto init = gen(exp.list[2], env);
+
+                    auto varTy = extractVarType(varNameDecl);
+
+                    auto varBinding = allocVar(varName, varTy, env);
+
+                    return builder->CreateStore(init, varBinding);
+                } else if (op == "set") {
+                    auto value = gen(exp.list[2], env);
+
+                    auto varName = exp.list[1].string;
+
+                    auto varBinding = env->lookup(varName);
+
+                    builder->CreateStore(value, varBinding);
+
+                    return value;
+                } else if (op == "begin") {
+                    /**
+                    编译 block 内所有式子，取最后值，很符合 LISP 的设计。
+                    */
+
+                    // ! 创建新环境
+                    auto blockEnv =
+                        std::make_shared<Environment>(std::map<std::string, llvm::Value *>(), env);
+
+                    llvm::Value *blockRes;
+
+                    // 迭代生成，这里还是递归
+                    for (int i = 1; i < exp.list.size(); i++) {
+                        blockRes = gen(exp.list[i], blockEnv);
+                    }
+
+                    return blockRes;
                 }
 
                 if (op == "printf") {
@@ -277,11 +281,86 @@ class EvalLLVM {
                     }
 
                     return builder->CreateCall(printfn, args);
+                } else {
+                    auto callable = gen(exp.list[0], env);
+
+                    std::vector<llvm::Value *> args{};
+
+                    for (auto i = 1; i < exp.list.size(); i++) {
+                        args.push_back(gen(exp.list[i], env));
+                    }
+
+                    // auto fn = (llvm::Function *)callable;
+
+                    return builder->CreateCall((llvm::Function *)callable, args);
                 }
             }
         }
 
         return builder->getInt32(0);
+    }
+
+    bool hasReturnType(const Exp &fnExp) {
+        return fnExp.list[3].type == ExpType::SYMBOL && fnExp.list[3].string == "->";
+    }
+
+    llvm::FunctionType *extractFunctionType(const Exp &fnExp) {
+        auto paramas = fnExp.list[2];
+
+        auto returnType =
+            hasReturnType(fnExp) ? getTypeFromString(fnExp.list[4].string) : builder->getInt32Ty();
+
+        std::vector<llvm::Type *> paramTypes{};
+
+        for (auto &para : paramas.list) {
+            auto paraTy = extractVarType(para);
+            paramTypes.push_back(paraTy);
+        }
+
+        return llvm::FunctionType::get(returnType, paramTypes, false);
+    }
+
+    llvm::Value *complieFunction(const Exp &fnExp, std::string fnName, Env env) {
+        auto params = fnExp.list[2];
+
+        // 需要根据是否显式指定返回值类型来确定 body 所在的列表
+        auto body = hasReturnType(fnExp) ? fnExp.list[5] : fnExp.list[3];
+
+        auto prevFn = fn;
+        // 使用 builder->GetInsertBlock() 来插入？
+        auto prevBlock = builder->GetInsertBlock();
+
+        // * 关注思考的层级，思考对象是否在同一层次
+        auto newFn = createFunction(fnName, extractFunctionType(fnExp), env);
+        // 更新 fn ?（说起来 fn 不是一个全局的变量吗？）更新是不是有些危险——果然最后还是要复位的。
+        fn = newFn;
+
+        auto idx = 0;
+        // 创建新的 函数环境
+        auto fnEnv = std::make_shared<Environment>(std::map<std::string, llvm::Value *>{}, env);
+
+        // ? 为函数的参数开辟空间，这里 auto 为什么要使用 & ？
+        for (auto &arg : fn->args()) {
+            auto param = params.list[idx++];
+            auto argName = extractVarName(param);
+
+            arg.setName(argName);
+
+            // allocVar 创建变量绑定并将绑定 store
+            auto argBinding = allocVar(argName, arg.getType(), fnEnv);
+            builder->CreateStore(&arg, argBinding);
+        }
+
+        // ? 创建返回值？
+        builder->CreateRet(gen(body, fnEnv));
+
+        // ! 复位
+        builder->SetInsertPoint(prevBlock);
+        fn = prevFn;
+
+        env->define(fnName, newFn);
+
+        return newFn;
     }
 
     std::string extractVarName(const Exp &exp) {
