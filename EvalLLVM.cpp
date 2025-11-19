@@ -21,10 +21,21 @@ int main(int argc, char const *argv[]) {
 
     // (printf "X: %d\n" x)
 
-    (var x (- 2 1))
-    (printf "x : %d\n" (eq 1 1))
-    (printf "x : %d\n" (> 1 1))
+    // (printf "x : %d\n" (eq 1 1))
+    // (printf "x : %d\n" (> 1 1))
     
+    // (if (eq x 1) 
+    //     (set x 100)
+    //     (set x 200))
+    // (printf "x:%d\n" x)
+    
+    (var x 0)
+    
+    (while ( < x 5)
+        (begin 
+            (set x (+ x 1))
+            (printf "%d " x))
+    (printf " * \n"))
     )";
 
     EvalLLVM vm;

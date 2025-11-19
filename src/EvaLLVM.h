@@ -164,6 +164,8 @@ class EvalLLVM {
                     GEN_BINARY_OP(CreateICmpEQ, "tmpcmp");
                 } else if (op == ">") {
                     GEN_BINARY_OP(CreateICmpUGT, "tmpcmp");
+                } else if (op == "<") {
+                    GEN_BINARY_OP(CreateICmpULT, "tmpcmp");
                 }
 
                 if (op == "var") {
@@ -188,7 +190,9 @@ class EvalLLVM {
 
                     auto varBinding = env->lookup(varName);
 
-                    return builder->CreateStore(value, varBinding);
+                    builder->CreateStore(value, varBinding);
+
+                    return value;
                 } else if (op == "begin") {
                     /**
                     编译 block 内所有式子，取最后值，很符合 LISP 的设计。
@@ -206,6 +210,61 @@ class EvalLLVM {
                     }
 
                     return blockRes;
+                } else if (op == "if") {
+                    auto cond = gen(exp.list[1], env);
+
+                    auto thenBlock = createBB("then", fn);
+                    auto elseBlock = createBB("else", fn);
+                    auto ifEndBlock = createBB("ifend", fn);
+
+                    // * 这一步是干什么用的？
+                    builder->CreateCondBr(cond, thenBlock, elseBlock);
+
+                    // then branch
+                    builder->SetInsertPoint(thenBlock);
+                    auto thenRes = gen(exp.list[2], env);
+                    builder->CreateBr(ifEndBlock);
+
+                    // else branch
+                    builder->SetInsertPoint(elseBlock);
+                    auto elseRes = gen(exp.list[3], env);
+                    builder->CreateBr(ifEndBlock);
+
+                    builder->SetInsertPoint(ifEndBlock);
+
+                    auto phi = builder->CreatePHI(builder->getInt32Ty(), 2, "tmpif");
+
+                    phi->addIncoming(thenRes, thenBlock);
+                    phi->addIncoming(elseRes, elseBlock);
+
+                    return phi;
+                } else if (op == "while") {
+                    auto condBlock = createBB("cond", fn);
+
+                    // 无条件跳转到 condBlock
+                    builder->CreateBr(condBlock);
+
+                    auto bodyBlock = createBB("body", fn);
+                    auto loopEndBlock = createBB("loopend", fn);
+
+                    // 设置插入点，并进行判断
+                    builder->SetInsertPoint(condBlock);
+                    auto cond = gen(exp.list[1], env);
+
+                    builder->CreateCondBr(cond, bodyBlock, loopEndBlock);
+
+                    // fn->getBasicBlockiList().push_back(bodyBlock);
+                    builder->SetInsertPoint(bodyBlock);
+                    gen(exp.list[2], env);
+                    builder->CreateBr(condBlock);
+
+                    // fn->getBasicBlockiList().push_back(loopEndBlock);
+                    builder->SetInsertPoint(loopEndBlock);
+
+                    llvm::LLVMContext &Ctx = fn->getContext();
+                    auto *MyBlock = llvm::BasicBlock::Create(Ctx, "Myblock");
+
+                    return builder->getInt32(0);
                 }
 
                 if (op == "printf") {
