@@ -1,5 +1,5 @@
 {
-    "editor.fontSize": 15,
+    "editor.fontSize": 13.8,
     "clangd.arguments": ["--log=verbose"],
     "clangd.path": "/usr/bin/clangd",
     // "clang-format.language.cpp.enable": true,

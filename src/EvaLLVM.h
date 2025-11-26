@@ -1,3 +1,14 @@
+/*
+ * Filename:  EvaLLVM.h
+ * Project:   lwy
+ * Author:    lwy
+ * ***
+ * Created:   2025/11/11 Tuesday 19:28:05
+ * Modified:  2025/11/20 Thursday 20:36:41
+ * ***
+ * Description:
+ */
+
 #ifndef EvaLLVM_h
 #define EvaLLVM_h
 
@@ -39,6 +50,7 @@ using Env = std::shared_ptr<Environment>;
         auto op2 = gen(exp.list[2], env);                                                          \
         return builder->Op(op1, op2, varName);                                                     \
     } while (false)
+
 class EvalLLVM {
   public:
     EvalLLVM() : parser(std::make_unique<EvaParser>()) {
@@ -440,6 +452,13 @@ class EvalLLVM {
 
         GlobalEnv = std::make_shared<Environment>(globalRec, nullptr);
     }
+
+    /*
+     * llvm 基本的三元素： module, ctx, builder
+     - module :
+     - ctx (context) :
+     - builder :  用于构建
+    */
 
     llvm::Function *fn;
 
