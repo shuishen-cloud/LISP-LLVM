@@ -2,3 +2,4 @@ out/
 CMakeFiles/
 Testing/
 .cache/
+compile_commands.json
