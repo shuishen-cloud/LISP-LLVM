@@ -1,8 +1,0 @@
-[
-{
-  "directory": "/home/lwy/project/llvm-project/out/build/Clang 20.1.8 x86_64-pc-linux-gnu",
-  "command": "/usr/sbin/clang++  -I/home/lwy/project/llvm-project/src -g -o CMakeFiles/llvm.dir/main.cpp.o -c /home/lwy/project/llvm-project/main.cpp",
-  "file": "/home/lwy/project/llvm-project/main.cpp",
-  "output": "CMakeFiles/llvm.dir/main.cpp.o"
-}
-]
